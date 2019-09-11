@@ -14,27 +14,35 @@
 #endif
 using namespace smf;
 
+
 struct GTSeqStruct
 {
-	unsigned int Magic;
-	void* unkpointer;
-	unsigned int unk1;
 	unsigned int MasterVolume;
 	unsigned int TempoMS;
 	unsigned int TrackPointers[GTSEQ_TRACKCOUNT];
-}GTSeqHead;
+}*GTSeqHead;
+
+struct GTSeqMainStruct
+{
+	unsigned int Magic;
+	void* unkpointer;
+	unsigned int SeqCount;
+}GTSeqMain;
 
 void* GTSeqData;
 
 char TrackName[64];
+char MultiSeqName[255];
 char OutFileName[255];
 
 bool bSetLoopStart = false;
 bool bSetLoopEnd = false;
+bool bParsedMain = false;
 
 unsigned int VerbosityLevel = 1;
 unsigned int FileSize = 0;
 unsigned int TrackNums[GTSEQ_TRACKCOUNT + 1];
+unsigned int CurrentSequence = 0;
 
 // my code from NFS projects...
 int __stdcall XNFS_printf(unsigned int Level, const char* Format, ...)
@@ -59,7 +67,9 @@ unsigned int GetFileSize(const char* FileName)
 
 void ParseMainSeqData(FILE* finput)
 {
-	fread(&GTSeqHead, sizeof(GTSeqStruct), 1, finput);
+	fread(&GTSeqMain, sizeof(GTSeqMainStruct), 1, finput);
+	GTSeqHead = (GTSeqStruct*)calloc(GTSeqMain.SeqCount, sizeof(GTSeqStruct));
+	fread(GTSeqHead, sizeof(GTSeqStruct), GTSeqMain.SeqCount, finput);
 
 	// allocate
 	GTSeqData = malloc(FileSize);
@@ -72,14 +82,14 @@ void ParseMainSeqData(FILE* finput)
 void PrintInfo()
 {
 	XNFS_printf(2, "GT Sequence info:\n");
-	XNFS_printf(2, "Master Volume: 0x%X\n", GTSeqHead.MasterVolume);
-	XNFS_printf(2, "Tempo in BPms: %d\n", GTSeqHead.TempoMS);
-	XNFS_printf(2, "Tempo in BPM: %.2f\n", (240000000.0 / GTSeqHead.TempoMS));
+	XNFS_printf(2, "Master Volume: 0x%X\n", GTSeqHead[CurrentSequence].MasterVolume);
+	XNFS_printf(2, "Tempo in BPms: %d\n", GTSeqHead[CurrentSequence].TempoMS);
+	XNFS_printf(2, "Tempo in BPM: %.2f\n", (240000000.0 / GTSeqHead[CurrentSequence].TempoMS));
 }
 
 float ConvertGTTempo(int InTempoBPms)
 {
-	return (240000000.0 / GTSeqHead.TempoMS);
+	return (240000000.0 / GTSeqHead[CurrentSequence].TempoMS);
 }
 
 unsigned int VLVDecoder(unsigned int vlv, unsigned int length)
@@ -271,7 +281,7 @@ void ConvertToMidi(const char* OutFileName)
 
 	// start master track for tempo shenanigans
 	TrackNums[0] = midifile.addTrack();
-	midifile.addTempo(TrackNums[0], 0, ConvertGTTempo(GTSeqHead.TempoMS));
+	midifile.addTempo(TrackNums[0], 0, ConvertGTTempo(GTSeqHead[CurrentSequence].TempoMS));
 	// end master track
 
 	// start deciphering GT sequence tracks and convert them to MIDI
@@ -279,11 +289,11 @@ void ConvertToMidi(const char* OutFileName)
 	for (unsigned int i = 0; i < GTSEQ_TRACKCOUNT; i++)
 	{
 		TrackNums[i + 1] = midifile.addTrack();
-		sprintf(TrackName, "Track 0x%x", GTSeqHead.TrackPointers[i]);
+		sprintf(TrackName, "Track 0x%x", GTSeqHead[CurrentSequence].TrackPointers[i]);
 		midifile.addTrackName(TrackNums[i + 1], 0, TrackName);
 
 		XNFS_printf(1, "Converting: %s\n", TrackName);
-		ConvertEvents(&midifile, TrackNums[i + 1], CurChannel, GTSeqHead.TrackPointers[i]);
+		ConvertEvents(&midifile, TrackNums[i + 1], CurChannel, GTSeqHead[CurrentSequence].TrackPointers[i]);
 		
 		CurChannel++;
 		CurChannel %= 16;
@@ -329,8 +339,24 @@ int main(int argc, char *argv[])
 	PrintInfo();
 	strcpy(OutFileName, argv[1]);
 	strcpy(&OutFileName[strlen(OutFileName) - 3], "mid");
-	XNFS_printf(1, "Converting main tracks...\n");
-	ConvertToMidi(OutFileName);
+
+	if (GTSeqMain.SeqCount >= 2)
+	{
+		for (unsigned int i = 0; i < GTSeqMain.SeqCount; i++)
+		{
+			XNFS_printf(1, "Converting sequence %d tracks...\n", i+1);
+			CurrentSequence = i;
+			strcpy(MultiSeqName, OutFileName);
+			sprintf(&MultiSeqName[strlen(MultiSeqName) - 4], "_Seq%d.mid", i);
+			ConvertToMidi(MultiSeqName);
+		}
+	}
+	else
+	{
+		XNFS_printf(1, "Converting main tracks...\n");
+		ConvertToMidi(OutFileName);
+	}
+
 
 	fclose(fin);
     return 0;
