@@ -37,7 +37,6 @@ char OutFileName[255];
 
 bool bSetLoopStart = false;
 bool bSetLoopEnd = false;
-bool bParsedMain = false;
 
 unsigned int VerbosityLevel = 1;
 unsigned int FileSize = 0;
@@ -349,6 +348,8 @@ int main(int argc, char *argv[])
 			strcpy(MultiSeqName, OutFileName);
 			sprintf(&MultiSeqName[strlen(MultiSeqName) - 4], "_Seq%d.mid", i);
 			ConvertToMidi(MultiSeqName);
+			bSetLoopStart = false;
+			bSetLoopEnd = false;
 		}
 	}
 	else
@@ -356,7 +357,6 @@ int main(int argc, char *argv[])
 		XNFS_printf(1, "Converting main tracks...\n");
 		ConvertToMidi(OutFileName);
 	}
-
 
 	fclose(fin);
     return 0;
