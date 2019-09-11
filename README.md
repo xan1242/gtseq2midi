@@ -4,7 +4,9 @@ A tool that can convert Gran Turismo sequence files to MIDI!
 This project utilizes the midifile library by craigsapp: https://github.com/craigsapp/midifile
 
 ## Compatibility
-It was only tested with Gran Turismo 2's files so far, so there could be some bugs with other games that use the same format.
+So far I can confirm compatibility with:
+- Gran Turismo 2
+- Gran Turismo 3 (multi sequence file music.seq)
 
 ## Documentation
 Docs about the format are coming soon!
