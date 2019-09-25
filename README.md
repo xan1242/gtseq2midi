@@ -8,6 +8,9 @@ So far I can confirm compatibility with:
 - Gran Turismo 2
 - Gran Turismo 3 (multi sequence file music.seq)
 
+Gran Turismo 1 requires research of the GT-ARC format first but from preliminary tests it is unfortunately buggy and needs fixing.
+I can confirm it uses the same format (SEQG).
+
 ## Documentation
 Docs about the format are coming soon!
 
