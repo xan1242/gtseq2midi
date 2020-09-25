@@ -88,7 +88,7 @@ void PrintInfo()
 
 float ConvertGTTempo(int InTempoBPms)
 {
-	return (240000000.0 / GTSeqHead[CurrentSequence].TempoMS);
+	return (240000000.0 / InTempoBPms);
 }
 
 unsigned int VLVDecoder(unsigned int vlv, unsigned int length)
